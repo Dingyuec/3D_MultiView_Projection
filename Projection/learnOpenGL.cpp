@@ -28,6 +28,7 @@ const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
 // camera
+Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), 'y', 45.0f);
 float lastX = SCR_WIDTH/2;
 float lastY = SCR_HEIGHT/2;
 bool firstMouse = true;
@@ -48,36 +49,41 @@ float start_deg, end_deg;
 int num_out;
 float fov;
 char texture_name[20];
-char if_contour;
+char contour_y_n;
 
 int main()
 {
-//    cout << "Please insert 3 float number (x, y, z) for camera position." <<endl;
-//    cin >> camera_x >> camera_y >> camera_z;
-//    cout << "Please insert 3 float number (x, y, z) for view point position." << endl;
-//    cin >> view_x >> view_y >> view_z;
-//    cout << "Please insert an axis (x / y / z)." << endl;
-//    cin >> axis;
-//    cout << "Please insert rotation range (a, b) in degree." << endl;
-//    cin >> start_deg >> end_deg;
-//    cout << "Please insert the number of pictures output." <<endl;
-//    cin >> num_out;
-//    cout << "Please insert field of view (0, 180)." <<endl;
-//    cin >> fov;
+    cout << "Please insert 3 float number (x, y, z) for camera position." <<endl;
+    cin >> camera_x >> camera_y >> camera_z;
+    cout << "Please insert 3 float number (x, y, z) for view point position." << endl;
+    cin >> view_x >> view_y >> view_z;
+    cout << "Please insert an axis (x / y / z)." << endl;
+    cin >> axis;
+    cout << "Please insert rotation range (a, b) in degree." << endl;
+    cin >> start_deg >> end_deg;
+    cout << "Please insert the number of pictures output." <<endl;
+    cin >> num_out;
+    cout << "Please insert field of view (0, 180)." <<endl;
+    cin >> fov;
     cout << "Please insert the name of texture file (eg. Plastic.jpg)." <<endl;
     cin >> texture_name;
     cout << "Do you want to output contour image? (y/n)" << endl;
-    cin >> if_contour;
+    cin >> contour_y_n;
     
     // rotation angle:
     // ---------------
     float current_deg = start_deg;
     float rotation_step = (end_deg - start_deg) / (num_out - 1);
     
+    // if output contour image
+    // -----------------------
+    bool if_contour;
+    if (contour_y_n == 'y') if_contour = true;
+    else    if_contour = false;
+    
     // camera:
     // -------
-//    Camera camera(glm::vec3(camera_x, camera_y, camera_z), glm::vec3(view_x, view_y, view_z), axis, fov);
-    Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), 'y', 45.0f);
+    Camera camera(glm::vec3(camera_x, camera_y, camera_z), glm::vec3(view_x, view_y, view_z), axis, fov);
 
     // glfw: initialize and configure
     // ------------------------------
@@ -110,6 +116,10 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     
     // build and compile shaders and models for loaded model
     // -----------------------------------------------------
@@ -119,13 +129,17 @@ int main()
     ourShader.setInt("shader", 0);
     GLfloat scaleFactor = float (1 / pow(ourModel.volume.x * ourModel.volume.y * ourModel.volume.z, 1.0/3.0));
     
-    // build and comile shaders and models for skybox
-    // ----------------------------------------------
+    // build and compile shaders and models for skybox
+    // -----------------------------------------------
     Shader skyboxShader("/Users/cui/openGLfiles/skyboxShader.vs", "/Users/cui/openGLfiles/skyboxShader.fs");
     SkyboxModel skyboxModel("/Users/cui/Downloads/sofa/georgetti.obj");
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
-
+    
+    // build and compile shaders for contour
+    // -------------------------------------
+    Shader shaderSingleColor("/Users/cui/openGLfiles/singleColorShader.vs",
+                             "/Users/cui/openGLfiles/singleColorShader.fs");
     
     // render loop
     // -----------
@@ -138,10 +152,9 @@ int main()
         
         // render
         // ------
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-        
         // view/projection transformations
         // -------------------------------
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
@@ -152,13 +165,26 @@ int main()
         
         // enable shader
         // -------------------------
-        ourShader.use();
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-        
-        // render the loaded model
-        // -----------------------
+        if (if_contour){
+            shaderSingleColor.use();
+            shaderSingleColor.setMat4("view", view);
+            shaderSingleColor.setMat4("projection", projection);
+            
+            glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+            glStencilMask(0x00);
+            glDisable(GL_DEPTH_TEST);
+        }
+        else{
+            ourShader.use();
+            ourShader.setMat4("projection", projection);
+            ourShader.setMat4("view", view);
+            
+            glStencilFunc(GL_ALWAYS, 1, 0xFF);
+            glStencilMask(0xFF);
+        }
+
         glm::mat4 model;
+        model = glm::mat4();
         model = glm::translate(model, glm::vec3(ourModel.pivot.x * -scaleFactor,
                                                 ourModel.pivot.y * -scaleFactor,
                                                 ourModel.pivot.z * -scaleFactor));
@@ -166,15 +192,21 @@ int main()
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
         
+        glBindVertexArray(0);
+        glStencilMask(0xFF);
+        glEnable(GL_DEPTH_TEST);
+        
         // render the skybox
         // -----------------
-        glDepthFunc(GL_LEQUAL);
-        skyboxShader.use();
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix(current_deg)));
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-        skyboxModel.Draw();
-
+        if (!if_contour){
+            glDepthFunc(GL_LEQUAL);
+            skyboxShader.use();
+            view = glm::mat4(glm::mat3(camera.GetViewMatrix(current_deg)));
+            skyboxShader.setMat4("view", view);
+            skyboxShader.setMat4("projection", projection);
+            skyboxModel.Draw();
+        }
+        
         // make window snapshot
         // --------------------
         char file_path[100] = "/Users/cui/Kneron/ModelProjection/Projection/Results/";
