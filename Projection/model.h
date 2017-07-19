@@ -27,7 +27,7 @@ class Model
 {
 public:
     /*  Model Data */
-    vector<Texture> textures_loaded; // stores all the textures loaded so far, optimization to make sure textures aren't loaded more than once.
+    vector<Texture> textures_loaded; // stores all the textures loaded so far, optimization.
     vector<Mesh> meshes;
     string texture_name;
     string directory;
@@ -39,6 +39,7 @@ public:
     
     /*  Functions   */
     // constructor, expects a filepath to a 3D model.
+    
     Model(string const &path, string const &texture_name, bool gamma = false) : gammaCorrection(gamma)
     {
         loadModel(path, texture_name);

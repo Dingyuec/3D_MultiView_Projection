@@ -8,6 +8,7 @@
 #include "shader_m.h"
 #include "camera.h"
 #include "model.h"
+#include "skyboxModel.h"
 
 #include <iostream>
 #include <string>
@@ -23,21 +24,21 @@ void processInput(GLFWwindow *window);
 int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long width, unsigned long height);
 
 // settings
-const unsigned int SCR_WIDTH = 1500;
-const unsigned int SCR_HEIGHT = 1000;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
 
 // camera
 float lastX = SCR_WIDTH/2;
 float lastY = SCR_HEIGHT/2;
 bool firstMouse = true;
 
-// timing
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
-
 // snapshot
 int file_index = 0;
 char *res_path = "/Users/cui/Kneron/ModelProjection/Projection/Results/";
+
+// coodinates
+glm::vec2 left_bottom;
+glm::vec2 width_height;
 
 // Insert camera/view point position (x, y, z)/axis/degree range
 float camera_x, camera_y, camera_z;
@@ -47,6 +48,7 @@ float start_deg, end_deg;
 int num_out;
 float fov;
 char texture_name[20];
+char if_contour;
 
 int main()
 {
@@ -64,16 +66,24 @@ int main()
 //    cin >> fov;
     cout << "Please insert the name of texture file (eg. Plastic.jpg)." <<endl;
     cin >> texture_name;
+    cout << "Do you want to output contour image? (y/n)" << endl;
+    cin >> if_contour;
+    
+    // rotation angle:
+    // ---------------
+    float current_deg = start_deg;
+    float rotation_step = (end_deg - start_deg) / (num_out - 1);
     
     // camera:
+    // -------
 //    Camera camera(glm::vec3(camera_x, camera_y, camera_z), glm::vec3(view_x, view_y, view_z), axis, fov);
     Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), 'y', 45.0f);
 
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     
@@ -88,10 +98,7 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    
-    // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
+
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -104,33 +111,26 @@ int main()
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
     
-    // build and compile shaders
-    // -------------------------
+    // build and compile shaders and models for loaded model
+    // -----------------------------------------------------
     Shader ourShader("/Users/cui/openGLfiles/shader.vs", "/Users/cui/openGLfiles/shader.fs");
-    
-    // load models
-    // -----------
     Model ourModel("/Users/cui/Downloads/sofa/georgetti.obj", texture_name);
-    
-    // draw in wireframe
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
+    ourShader.use();
+    ourShader.setInt("shader", 0);
     GLfloat scaleFactor = float (1 / pow(ourModel.volume.x * ourModel.volume.y * ourModel.volume.z, 1.0/3.0));
+    
+    // build and comile shaders and models for skybox
+    // ----------------------------------------------
+    Shader skyboxShader("/Users/cui/openGLfiles/skyboxShader.vs", "/Users/cui/openGLfiles/skyboxShader.fs");
+    SkyboxModel skyboxModel("/Users/cui/Downloads/sofa/georgetti.obj");
+    skyboxShader.use();
+    skyboxShader.setInt("skybox", 0);
 
     
     // render loop
     // -----------
-    
-    float current_deg = start_deg;
-    float rotation_step = (end_deg - start_deg) / (num_out - 1);
-    
     while (!glfwWindowShouldClose(window))
     {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
         
         // input
         // -----
@@ -140,38 +140,50 @@ int main()
         // ------
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        // don't forget to enable shader before setting uniforms
-        ourShader.use();
+
         
         // view/projection transformations
+        // -------------------------------
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
                                                 (float)SCR_WIDTH / (float)SCR_HEIGHT,
                                                 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix(current_deg);
         current_deg += rotation_step;
         
+        // enable shader
+        // -------------------------
+        ourShader.use();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
         
         // render the loaded model
+        // -----------------------
         glm::mat4 model;
         model = glm::translate(model, glm::vec3(ourModel.pivot.x * -scaleFactor,
                                                 ourModel.pivot.y * -scaleFactor,
                                                 ourModel.pivot.z * -scaleFactor));
-        
         model = glm::scale(model, glm::vec3(scaleFactor , scaleFactor , scaleFactor));
-
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
         
+        // render the skybox
+        // -----------------
+        glDepthFunc(GL_LEQUAL);
+        skyboxShader.use();
+        view = glm::mat4(glm::mat3(camera.GetViewMatrix(current_deg)));
+        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("projection", projection);
+        skyboxModel.Draw();
+
         // make window snapshot
+        // --------------------
         char file_path[100] = "/Users/cui/Kneron/ModelProjection/Projection/Results/";
         char index[10];
         sprintf(index, "%d", file_index);
         strcat(file_path, index);
         char suffix[10] = ".png";
         strcat(file_path, suffix);
+        
         Snapshot(file_path, 0, 0, SCR_WIDTH * 2, (SCR_HEIGHT - 100) * 2);
         ++ file_index;
         
@@ -191,7 +203,8 @@ int main()
     return 0;
 }
 
-
+// snapshot the screen and save it in file path
+// --------------------------------------------
 int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long width, unsigned long height)
 {
     FILE *fp;
@@ -303,5 +316,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
 }
+
+
+
+
 
 

@@ -24,7 +24,7 @@ const float ZOOM       =  45.0f;
 
 
 // An abstract camera class that processes input and calculates the corresponding Eular Angles, Vectors and Matrices for use in OpenGL
-class Camera
+class CameraBox
 {
 public:
     // Camera Attributes
@@ -63,14 +63,7 @@ public:
     // Returns the view matrix calculated using Eular Angles and the LookAt Matrix
     glm::mat4 GetViewMatrix()
     {
-        GLfloat radius = 10.0f;
-        GLfloat camX = sin(glfwGetTime()) * radius;
-        GLfloat camZ = cos(glfwGetTime()) * radius;
-        glm::mat4 view;
-        view = glm::lookAt(glm::vec3(camX, 0.0, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-        return view;
-//        return glm::lookAt(Position, Position + Front, Up);
-        
+        return glm::lookAt(Position, Position + Front, Up);
     }
     
     // Processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
