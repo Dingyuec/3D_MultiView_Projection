@@ -65,6 +65,24 @@ public:
         return view;        
     }
     
+    glm::vec3 GetAxisMatrix()
+    {
+        switch (Axis) {
+            case 'x':
+                return glm::vec3(1.0f, 0.0f, 0.0f);
+                break;
+            case 'y':
+                return glm::vec3(0.0f, 1.0f, 0.0f);
+                break;
+            case 'z':
+                return glm::vec3(0.0f, 0.0f, 1.0f);
+                break;
+            default:
+                break;
+        }
+        return glm::vec3(0.0f, 0.0f, 0.0f);
+    }
+    
     glm::vec3 GetCameraPos(glm::vec3 pos, char axis, float cur_rad)
     {
         GLfloat radius;

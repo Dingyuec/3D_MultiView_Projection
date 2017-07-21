@@ -9,6 +9,7 @@
 #include "camera.h"
 #include "model.h"
 #include "skyboxModel.h"
+#include "planeModel.h"
 
 #include <iostream>
 #include <string>
@@ -24,8 +25,8 @@ void processInput(GLFWwindow *window);
 int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long width, unsigned long height);
 
 // settings
-const unsigned int SCR_WIDTH = 1280;
-const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 1500;
+const unsigned int SCR_HEIGHT = 1200;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), 'y', 45.0f);
@@ -116,25 +117,17 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_STENCIL_TEST);
-    glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     
     // build and compile shaders and models for loaded model
     // -----------------------------------------------------
     Shader ourShader("/Users/cui/openGLfiles/shader.vs", "/Users/cui/openGLfiles/shader.fs");
     Model ourModel("/Users/cui/Downloads/sofa/georgetti.obj", texture_name);
-    ourShader.use();
-    ourShader.setInt("shader", 0);
     GLfloat scaleFactor = float (1 / pow(ourModel.volume.x * ourModel.volume.y * ourModel.volume.z, 1.0/3.0));
     
-    // build and compile shaders and models for skybox
-    // -----------------------------------------------
-    Shader skyboxShader("/Users/cui/openGLfiles/skyboxShader.vs", "/Users/cui/openGLfiles/skyboxShader.fs");
-    SkyboxModel skyboxModel("/Users/cui/Downloads/sofa/georgetti.obj");
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
+    // build and compile shaders and models for plane
+    // ----------------------------------
+    Shader planeShader("/Users/cui/openGLfiles/planeShader.vs", "/Users/cui/openGLfiles/planeShader.fs");
+    PlaneModel planeModel("/Users/cui/Downloads/sofa/georgetti.obj");
     
     // build and compile shaders for contour
     // -------------------------------------
@@ -157,11 +150,12 @@ int main()
 
         // view/projection transformations
         // -------------------------------
+        glm::mat4 model;
+        glm::mat4 plane_matrix;
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
                                                 (float)SCR_WIDTH / (float)SCR_HEIGHT,
                                                 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix(current_deg);
-        current_deg += rotation_step;
         
         // enable shader
         // -------------------------
@@ -169,43 +163,28 @@ int main()
             shaderSingleColor.use();
             shaderSingleColor.setMat4("view", view);
             shaderSingleColor.setMat4("projection", projection);
-            
-            glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-            glStencilMask(0x00);
-            glDisable(GL_DEPTH_TEST);
         }
         else{
+            planeShader.use();
+            planeShader.setMat4("projection", projection);
+            planeShader.setMat4("model", plane_matrix);
+            planeModel.Draw();
+            
             ourShader.use();
             ourShader.setMat4("projection", projection);
             ourShader.setMat4("view", view);
-            
-            glStencilFunc(GL_ALWAYS, 1, 0xFF);
-            glStencilMask(0xFF);
         }
 
-        glm::mat4 model;
-        model = glm::mat4();
         model = glm::translate(model, glm::vec3(ourModel.pivot.x * -scaleFactor,
                                                 ourModel.pivot.y * -scaleFactor,
                                                 ourModel.pivot.z * -scaleFactor));
         model = glm::scale(model, glm::vec3(scaleFactor , scaleFactor , scaleFactor));
+        
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
         
-        glBindVertexArray(0);
-        glStencilMask(0xFF);
-        glEnable(GL_DEPTH_TEST);
-        
-        // render the skybox
-        // -----------------
-        if (!if_contour){
-            glDepthFunc(GL_LEQUAL);
-            skyboxShader.use();
-            view = glm::mat4(glm::mat3(camera.GetViewMatrix(current_deg)));
-            skyboxShader.setMat4("view", view);
-            skyboxShader.setMat4("projection", projection);
-            skyboxModel.Draw();
-        }
+        current_deg += rotation_step;
+
         
         // make window snapshot
         // --------------------

@@ -113,12 +113,12 @@ private:
         // -------------
         vector<std::string> faces
         {
-            "/Users/cui/Downloads/skybox/right.jpg",
-            "/Users/cui/Downloads/skybox/left.jpg",
-            "/Users/cui/Downloads/skybox/top.jpg",
-            "/Users/cui/Downloads/skybox/bottom.jpg",
-            "/Users/cui/Downloads/skybox/back.jpg",
-            "/Users/cui/Downloads/skybox/front.jpg"
+            "/Users/cui/Downloads/demo/canary/pos-x.png",
+            "/Users/cui/Downloads/demo/canary/neg-x.png",
+            "/Users/cui/Downloads/demo/canary/pos-y.png",
+            "/Users/cui/Downloads/demo/canary/neg-y.png",
+            "/Users/cui/Downloads/demo/canary/pos-z.png",
+            "/Users/cui/Downloads/demo/canary/neg-z.png"
         };
         cubemapTexture = loadCubemap(faces);
     }
