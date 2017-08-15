@@ -25,7 +25,7 @@
 
 using namespace std;
 
-unsigned int loadTexture(const char *path);
+unsigned int loadTexture(string const &path);
 
 class PlaneModel{
 public:
@@ -35,7 +35,7 @@ public:
     
     /* Functions */
     PlaneModel(string const &path){
-        loadModel();
+        loadModel(path);
     }
     
     void Draw(){
@@ -49,16 +49,16 @@ public:
     
 private:
     /* Functions */
-    void loadModel(){
+    void loadModel(string const &path){
         float planeVertices[] = {
             // positions          // texture Coords
-            5.0f, -5.0f,  -10.0f,  2.0f, 0.0f,
-            5.0f, 5.0f, -10.0f,  2.0f, 2.0f,
-            -5.0f, 5.0f, -10.0f,  0.0f, 2.0f,
+            7.0f, -5.0f,  -12.0f,  0.0f, 1.0f,
+            7.0f, 5.0f, -12.0f,  0.0f, 0.0f,
+            -7.0f, 5.0f, -12.0f,  1.0f, 0.0f,
             
-            -5.0f, 5.0f,  -10.0f,  0.0f, 2.0f,
-            -5.0f, -5.0f, -10.0f,  0.0f, 0.0f,
-            5.0f, -5.0f, -10.0f,  2.0f, 0.0f
+            -7.0f, 5.0f,  -12.0f,  1.0f, 0.0f,
+            -7.0f, -5.0f, -12.0f,  1.0f, 1.0f,
+            7.0f, -5.0f, -12.0f,  0.0f, 1.0f
         };
         
         // plane VAO
@@ -75,16 +75,16 @@ private:
         
         // load textures
         // -------------
-        floorTexture = loadTexture("/Users/cui/Downloads/wall.jpg");
+        floorTexture = loadTexture(path);
     }
     
-    unsigned int loadTexture(char const * path)
+    unsigned int loadTexture(string const &path)
     {
         unsigned int textureID;
         glGenTextures(1, &textureID);
         
         int width, height, nrComponents;
-        unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+        unsigned char *data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
         if (data)
         {
             GLenum format;

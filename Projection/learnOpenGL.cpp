@@ -5,10 +5,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "shader_m.h"
 #include "camera.h"
 #include "model.h"
-#include "skyboxModel.h"
 #include "planeModel.h"
 
 #include <iostream>
@@ -20,19 +18,17 @@
 
 #define png_infopp_NULL (png_infopp)NULL
 
+//---------------------------------------------------------------------------------
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long width, unsigned long height);
 
 // settings
-const unsigned int SCR_WIDTH = 1500;
-const unsigned int SCR_HEIGHT = 1200;
-
-// camera
-Camera camera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), 'y', 45.0f);
-float lastX = SCR_WIDTH/2;
-float lastY = SCR_HEIGHT/2;
-bool firstMouse = true;
+const unsigned int WIDTH = 2000;
+const unsigned int HEIGHT = 1500;
+const unsigned long SCR_WIDTH = 3350;
+const unsigned long SCR_HEIGHT = 1850;
 
 // snapshot
 int file_index = 0;
@@ -45,58 +41,66 @@ glm::vec2 width_height;
 // Insert camera/view point position (x, y, z)/axis/degree range
 float camera_x, camera_y, camera_z;
 float view_x, view_y, view_z;
-char axis;
 float start_deg, end_deg;
-int num_out;
 float fov;
-char texture_name[20];
 char contour_y_n;
+char axis;
+int num_out;
+
+//---------------------------------------------------------------------------------
 
 int main()
 {
-    cout << "Please insert 3 float number (x, y, z) for camera position." <<endl;
-    cin >> camera_x >> camera_y >> camera_z;
-    cout << "Please insert 3 float number (x, y, z) for view point position." << endl;
-    cin >> view_x >> view_y >> view_z;
-    cout << "Please insert an axis (x / y / z)." << endl;
-    cin >> axis;
-    cout << "Please insert rotation range (a, b) in degree." << endl;
-    cin >> start_deg >> end_deg;
-    cout << "Please insert the number of pictures output." <<endl;
-    cin >> num_out;
-    cout << "Please insert field of view (0, 180)." <<endl;
-    cin >> fov;
-    cout << "Please insert the name of texture file (eg. Plastic.jpg)." <<endl;
-    cin >> texture_name;
-    cout << "Do you want to output contour image? (y/n)" << endl;
-    cin >> contour_y_n;
+//    cout << "Please insert 3 float number (x, y, z) for camera position." <<endl;
+//    cin >> camera_x >> camera_y >> camera_z;
+//    cout << "Please insert 3 float number (x, y, z) for view point position." << endl;
+//    cin >> view_x >> view_y >> view_z;
+//    cout << "Please insert an axis (x / y / z)." << endl;
+//    cin >> axis;
+//    cout << "Please insert rotation range (a, b) in degree." << endl;
+//    cin >> start_deg >> end_deg;
+//    cout << "Please insert the number of pictures output." <<endl;
+//    cin >> num_out;
+//    cout << "Please insert field of view (0, 180)." <<endl;
+//    cin >> fov;
+//    cout << "Do you want to output contour image? (y/n)" << endl;
+//    cin >> contour_y_n;
+    camera_x = 0.0;
+    camera_y = 0.0;
+    camera_z = 9.0;
+    view_x = 0.0;
+    view_y = 0.0;
+    view_z = 0.0;
+    axis = 'y';
+    start_deg = 0;
+    end_deg = 90;
+    num_out = 10000;
+    fov = 45;
+    contour_y_n = 'n';
+    GLfloat scale = 1.0;
     
     // rotation angle:
-    // ---------------
     float current_deg = start_deg;
     float rotation_step = (end_deg - start_deg) / (num_out - 1);
     
     // if output contour image
-    // -----------------------
     bool if_contour;
     if (contour_y_n == 'y') if_contour = true;
     else    if_contour = false;
     
     // camera:
-    // -------
     Camera camera(glm::vec3(camera_x, camera_y, camera_z), glm::vec3(view_x, view_y, view_z), axis, fov);
-
+    
+    //------------------------------------------------------------------------------
     // glfw: initialize and configure
-    // ------------------------------
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Only for mac
     
     // glfw window creation
-    // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Output", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -105,9 +109,8 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
+    
     // glad: load all OpenGL function pointers
-    // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -115,50 +118,50 @@ int main()
     }
     
     // configure global opengl state
-    // -----------------------------
     glEnable(GL_DEPTH_TEST);
     
+    //------------------------------------------------------------------------------
     // build and compile shaders and models for loaded model
-    // -----------------------------------------------------
-    Shader ourShader("/Users/cui/openGLfiles/shader.vs", "/Users/cui/openGLfiles/shader.fs");
-    Model ourModel("/Users/cui/Downloads/sofa/georgetti.obj", texture_name);
+    Shader ourShader("/Users/cui/openGLfiles/shader.vs",
+                     "/Users/cui/openGLfiles/shader.fs");
+    
+    Model ourModel("/Users/cui/Desktop/models/1.obj",
+                   "/Users/cui/Desktop/textures/2.jpg");
+    
     GLfloat scaleFactor = float (1 / pow(ourModel.volume.x * ourModel.volume.y * ourModel.volume.z, 1.0/3.0));
     
+    
     // build and compile shaders and models for plane
-    // ----------------------------------
-    Shader planeShader("/Users/cui/openGLfiles/planeShader.vs", "/Users/cui/openGLfiles/planeShader.fs");
-    PlaneModel planeModel("/Users/cui/Downloads/sofa/georgetti.obj");
+    Shader planeShader("/Users/cui/openGLfiles/planeShader.vs",
+                       "/Users/cui/openGLfiles/planeShader.fs");
+    
+    PlaneModel planeModel("/Users/cui/Desktop/backgrounds/1.jpg");
+    
     
     // build and compile shaders for contour
-    // -------------------------------------
     Shader shaderSingleColor("/Users/cui/openGLfiles/singleColorShader.vs",
                              "/Users/cui/openGLfiles/singleColorShader.fs");
     
+    //------------------------------------------------------------------------------
     // render loop
-    // -----------
     while (!glfwWindowShouldClose(window))
     {
-        
         // input
-        // -----
         processInput(window);
         
         // render
-        // ------
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
+        
         // view/projection transformations
-        // -------------------------------
         glm::mat4 model;
         glm::mat4 plane_matrix;
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom),
-                                                (float)SCR_WIDTH / (float)SCR_HEIGHT,
+                                                (float)WIDTH / (float)HEIGHT,
                                                 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix(current_deg);
         
         // enable shader
-        // -------------------------
         if (if_contour){
             shaderSingleColor.use();
             shaderSingleColor.setMat4("view", view);
@@ -174,20 +177,20 @@ int main()
             ourShader.setMat4("projection", projection);
             ourShader.setMat4("view", view);
         }
-
+        
         model = glm::translate(model, glm::vec3(ourModel.pivot.x * -scaleFactor,
                                                 ourModel.pivot.y * -scaleFactor,
                                                 ourModel.pivot.z * -scaleFactor));
         model = glm::scale(model, glm::vec3(scaleFactor , scaleFactor , scaleFactor));
         
+        model = glm::scale(model, glm::vec3(scale, scale, scale));
         ourShader.setMat4("model", model);
         ourModel.Draw(ourShader);
         
         current_deg += rotation_step;
-
         
+        //------------------------------------------------------------------------------
         // make window snapshot
-        // --------------------
         char file_path[100] = "/Users/cui/Kneron/ModelProjection/Projection/Results/";
         char index[10];
         sprintf(index, "%d", file_index);
@@ -195,11 +198,11 @@ int main()
         char suffix[10] = ".png";
         strcat(file_path, suffix);
         
-        Snapshot(file_path, 0, 0, SCR_WIDTH * 2, (SCR_HEIGHT - 100) * 2);
+        Snapshot(file_path, 0, 0, SCR_WIDTH, SCR_HEIGHT);
         ++ file_index;
         
+        //------------------------------------------------------------------------------
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
         
@@ -209,13 +212,12 @@ int main()
     }
     
     // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
 }
 
 // snapshot the screen and save it in file path
-// --------------------------------------------
+// -------------------------------------------
 int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long width, unsigned long height)
 {
     FILE *fp;
@@ -288,7 +290,7 @@ int Snapshot(char *file_name, unsigned int x, unsigned int y, unsigned long widt
     
     for (i = 0; i < height; i++)
     {
-        row_pointers[i] = (png_bytep)image + (height - i) * width * 3;
+        row_pointers[i] = (png_bytep)image + (height - i - 1) * width * 3;
     }
     
     png_write_image(png_ptr, row_pointers);
